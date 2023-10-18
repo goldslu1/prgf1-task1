@@ -153,7 +153,7 @@ public class Canvas {
 				ln = new LinerTrivial();
 				cr = new CirclerTrivial();
 				ln.drawLine(img, p1, p2,0xffff00);
-				cr.drawCircle(img, p1, p2, 0xffff00);
+				cr.drawCircle(img, p1, 0xffff00);
 				img.present(panel.getGraphics());
 			}
 		});
@@ -171,11 +171,11 @@ public class Canvas {
 
 	public void draw() {
 		img.clear(background);
-		img.setColor(img.getWidth() / 2 , img.getHeight() / 2, 0xffff00);
+		/*img.setColor(img.getWidth() / 2 , img.getHeight() / 2, 0xffff00);
 		img.setColor((img.getWidth() / 2) + 1 , img.getHeight() / 2, 0xffff00);
 		img.setColor((img.getWidth() / 2) - 1 , img.getHeight() / 2, 0xffff00);
 		img.setColor(img.getWidth() / 2 , (img.getHeight() / 2) + 1, 0xffff00);
-		img.setColor(img.getWidth() / 2 , (img.getHeight() / 2) - 1, 0xffff00);
+		img.setColor(img.getWidth() / 2 , (img.getHeight() / 2) - 1, 0xffff00);*/
 
 	}
 
