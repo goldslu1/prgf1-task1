@@ -2,6 +2,7 @@ import objectdata.Point;
 import rasterdata.Presentable;
 import rasterdata.Raster;
 import rasterdata.RasterBI;
+import rasterop.CirclerTrivial;
 import rasterop.LinerTrivial;
 
 import java.awt.BorderLayout;
@@ -30,6 +31,7 @@ public class Canvas {
 	private JFrame frame;
 	private JPanel panel;
 	private LinerTrivial ln;
+	private CirclerTrivial cr;
 	//private BufferedImage img;
 	private RasterBI img; //TODO prepsat s vlastni tridou, kdyz uzivatel klikne oznaci se bod a tazenim mysi ? + dalsi bod = usecka
 	private Presentable prs;
@@ -149,7 +151,9 @@ public class Canvas {
 				p2 = new Point(e.getX(), e.getY());
 				mouseDragged = true;
 				ln = new LinerTrivial();
+				cr = new CirclerTrivial();
 				ln.drawLine(img, p1, p2,0xffff00);
+				cr.drawCircle(img, p1, p2, 0xffff00);
 				img.present(panel.getGraphics());
 			}
 		});
