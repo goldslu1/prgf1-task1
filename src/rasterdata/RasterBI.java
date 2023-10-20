@@ -6,9 +6,30 @@ import java.util.Optional;
 
 public class RasterBI implements Raster, Presentable{
     private final BufferedImage img;
+    private int color;
 
     public RasterBI(int width, int height) {
         this.img = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+    }
+    public void draw(RasterBI raster) {
+        Graphics graphics = getGraphics();
+        graphics.setColor(new Color(color));
+        graphics.fillRect(0, 0, getWidth(), getHeight());
+        graphics.drawImage(raster.img, 0, 0, null);
+    }
+    public BufferedImage getImg() {
+        return img;
+    }
+    public Graphics getGraphics(){
+        return img.getGraphics();
+    }
+    @Override
+    public int getPixel(int x, int y) {
+        return img.getRGB(x, y);
+    }
+    @Override
+    public void setPixel(int x, int y, int color) {
+        img.setRGB(x, y, color);
     }
     @Override
     public int getWidth() {
