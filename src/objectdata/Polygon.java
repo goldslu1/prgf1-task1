@@ -6,6 +6,9 @@ import rasterop.LinerTrivial;
 
 import java.util.List;
 
+/**
+ * Represent a polygon defined a list of edges in 2D space
+ */
 public class Polygon {
     List<Point> edges;
     int color;
@@ -15,22 +18,42 @@ public class Polygon {
         this.color = color;
     }
 
+    /**
+     * Getting for returning a list with Points
+     * @return List of edges
+     */
     public List<Point> getEdges() {
         return edges;
     }
 
+    /**
+     * Setter for setting the List of edges
+     * @param edges List of edges
+     */
     public void setEdges(List<Point> edges) {
         this.edges = edges;
     }
 
+    /**
+     * Getter for returning color of this polygon
+     * @return int color
+     */
     public int getColor() {
         return color;
     }
 
+    /**
+     * Setter for setting the color of this polygon
+     * @param color numeric representation of a color
+     */
     public void setColor(int color) {
         this.color = color;
     }
 
+    /**
+     * Draws the polygon onto the 2D raster
+     * @param img represents the raster on which is the polygon drawn
+     */
     public void drawPolygon(RasterBI img){
         ln = new LinerTrivial(img);
         for (int i = 0; i < edges.size(); ++i){

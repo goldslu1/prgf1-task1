@@ -23,8 +23,6 @@ import javax.swing.WindowConstants;
  * @version 2020
  */
 
-//DU: zacit s krizkem uprostred, aby se s nim dalo hybat na vsechny strany a abby za tim krizkem byla videt trasa, naprs o 3
-//ukladani souradnic do arraylistu
 public class Canvas {
 
 	private JFrame frame;
@@ -40,8 +38,8 @@ public class Canvas {
 	private boolean pressedP;
 	private boolean line;
 	String modeP;
-	private List<Point> points = new ArrayList(); //Array list for LinerTrivial class
-	private List<Point> pointsR = new ArrayList(); //Array list for Filled line rasterizer class and its methods
+	private List<Point> points = new ArrayList();
+	private List<Point> pointsR = new ArrayList();
 	private int mode;
 	private FilledLineRasterizer rasterizer;
 	private int x, y;
@@ -75,6 +73,9 @@ public class Canvas {
 		panel.requestFocusInWindow();
 		ln = new LinerTrivial(img);
 		holdingShift = false;
+		/**
+		 * Happens when the window gets resized, so that everything stays - it gets redrawn
+		 */
 		panel.addComponentListener(new ComponentAdapter() {
 			@Override
 			public void componentResized(ComponentEvent e) {
@@ -85,11 +86,13 @@ public class Canvas {
 				draw();
 			}
 		});
-
+		/**
+		 * Event that happens when a key is pressed
+		 */
 		panel.addKeyListener(new KeyAdapter() {
 			@Override
 			public void keyPressed(KeyEvent e) {
-				if (e.getKeyCode() == KeyEvent.VK_C) {
+				if (e.getKeyCode() == KeyEvent.VK_C) { //Clears the Canvas when C is pressed
 					points.clear();
 					pointsR.clear();
 					pointsR.add(new Point(0,0));
@@ -104,7 +107,7 @@ public class Canvas {
 				if (e.getKeyCode() == KeyEvent.VK_SHIFT){
 					holdingShift = true;
 				}
-				if (e.getKeyCode() == KeyEvent.VK_P){
+				if (e.getKeyCode() == KeyEvent.VK_P){ //If P is pressed, it will draw a duplicate of already existing polygon
 					draw();
 					if (!pressedP){
 						if (p == null) {
@@ -132,16 +135,18 @@ public class Canvas {
 				}
 			}
 		});
-
+		/**
+		 * Even that happens when the mouse is pressed on the panel
+		 */
 		panel.addMouseListener(new MouseAdapter() {
 			@Override
 			public void mousePressed(MouseEvent e) {
-				if (e.getButton() == 1) {
+				if (e.getButton() == 1 && !holdingShift) { //When clicking with LMB
 					if (points.size() == 0) {
 						points.add(new Point(e.getX(),e.getY()));
 					}
 					line = true;
-				} else if (e.getButton() == 2){
+				} else if (e.getButton() == 2 && !holdingShift){ //When clicking with MMB
 					mode = 2;
 					if (x != 0 && y != 0 && rasterizerStart == false) {
 						x = 0;
@@ -152,31 +157,40 @@ public class Canvas {
 					pointsR.add(new Point(e.getX(), e.getY()));
 					x = e.getX();
 					y = e.getY();
-				} else if (e.getButton() == 3){
+				} else if (e.getButton() == 3 && !holdingShift){ //When clicking with RMB
 					mode = 3;
+				} else if (e.getButton() == 1 && holdingShift){ //Shift + LMB
+					if (points.size() > 4){
+						int i = points.size();
+						ln.drawLine(points.get(i - 3).getX(), points.get(i-3).getY(), points.get(i-1).getX(), points.get(i-1).getY(), 0x00ff00);
+						ln.drawLine(points.get(i - 4).getX(), points.get(i-4).getY(), points.get(i-1).getX(), points.get(i-1).getY(), 0x00ff00);
+					}
+					panel.repaint();
 				} else {
 					mode = 0;
 				}
 			}
 		});
+		/**
+		 * Event that happens when mouse is released
+		 */
 		panel.addMouseListener(new MouseAdapter() {
 			@Override
 			public void mouseReleased(MouseEvent e) {
-				if (e.getButton() == 1){
+				if (e.getButton() == 1 && !holdingShift){ //When releasing LMB
 					points.add(new Point(e.getX(),e.getY()));
 					line = false;
 				}
-                else if (e.getButton() == 2){
+                else if (e.getButton() == 2 && !holdingShift){ //When releasing MMB
 					mode = 2;
-				}
-				else if (e.getButton() == 3){
+				} else if (e.getButton() == 3 && !holdingShift){ //When releasing RMB
 					mode = 3;
 				} else {
 					mode = 0;
 				}
 
 				draw();
-				if (pressedP){
+				if (pressedP){ //If P has been pressed -> redraws the polygon
 					redrawPolygon();
 				}
 				panel.repaint();
@@ -185,6 +199,10 @@ public class Canvas {
 		});
 
 		panel.addMouseMotionListener(new MouseMotionAdapter() {
+			/**
+			 * Event that happens when mouse is dragged on the panel
+			 * @param e the event to be processed
+			 */
 			@Override
 			public void mouseDragged(MouseEvent e) {
 				draw();
@@ -196,7 +214,7 @@ public class Canvas {
 						ln.drawLine(points.get(0).getX(), points.get(0).getY(), e.getX(), e.getY(), 0xffff00);
 
 					}
-				} else if (mode == 3 && points.size() > 0) {
+				} else if (mode == 3 && points.size() > 0) { //When holding the RMB it draws a dashed line
 					int i = points.size();
 					ln.drawDashLine(points.get(i - 1).getX(), points.get(i - 1).getY(), e.getX(), e.getY(), 0xffff00);
 					ln.drawDashLine(points.get(0).getX(), points.get(0).getY(), e.getX(), e.getY(), 0xffff00);
@@ -204,6 +222,10 @@ public class Canvas {
 				panel.repaint();
 			}
 
+			/**
+			 * When mouse is moved
+			 * @param e the event to be processed
+			 */
 			@Override
 			public void mouseMoved(MouseEvent e) {
                 draw();
@@ -215,6 +237,9 @@ public class Canvas {
 		});
 	}
 
+	/**
+	 * Redraws the lines onto the canvas that form polygons from the first instance(holding LMB) and also from MMB
+	 */
 	public void redrawLine() {
 		if (points.size() > 1){
 			for (int i = 0; i < points.size(); ++i) {
@@ -227,6 +252,10 @@ public class Canvas {
 			}
 		}
 	}
+
+	/**
+	 * Redraws a polygon if there is any onto the canvas
+	 */
 	public void redrawPolygon(){
 		if (points.size() > 1 && p != null){
 			p.drawPolygon(img);
@@ -238,12 +267,12 @@ public class Canvas {
 		redrawLine();
 		if (pressedP){
 			modeP = "On";
-		}
-		else {
+		} else {
 			modeP = "Off";
 		}
-		img.getGraphics().drawString("LMB - For drawing Polygons with Full Lines, Either click or dragg| RMB - Drawing with dashed lines - Holding the right mouse button to draw dashed lines and left click to accept",5,img.getHeight() - 20);
-		img.getGraphics().drawString("MMB - For drawing white lines starting from [0,0] with FilledLineRasterizer class, P[" + modeP + "] - Is a mode for duplicating a second polygon with red color, moved by 50points with the Polygon Class",5,img.getHeight() - 5);
+		img.getGraphics().drawString("LMB - For drawing Polygons with Full Lines, Either click or dragg | RMB - Drawing with dashed lines - Holding the right mouse button to draw dashed lines and left click to accept | C - clear the canvas",5,img.getHeight() - 35);
+		img.getGraphics().drawString("MMB - For drawing white lines starting from [0,0] with FilledLineRasterizer class, P[" + modeP + "] - Is a mode for duplicating a second polygon with red color, moved by 50points with the Polygon Class",5,img.getHeight() - 20);
+		img.getGraphics().drawString("SHIFT + LMB - Not exactly working but if you hold shift and left click at the same time it will show you some lines from point to another - they are supposed to represent diagonals(Only if you have more than 5 edges)",5,img.getHeight() - 5);
 	}
 
 	public void start() {
@@ -254,7 +283,7 @@ public class Canvas {
 	}
 
 	public static void main(String[] args) {
-		SwingUtilities.invokeLater(() -> new Canvas(1000, 600).start());
+		SwingUtilities.invokeLater(() -> new Canvas(1200, 600).start());
 	}
 
 }

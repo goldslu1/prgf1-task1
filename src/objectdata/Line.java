@@ -1,7 +1,7 @@
 package objectdata;
 
 /**
- * Represents a line in a 2D space; immutalbe
+ * Represents a line in a 2D space; immutable
  */
 public class Line {
     public final Point p1;

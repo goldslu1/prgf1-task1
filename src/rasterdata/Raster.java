@@ -38,11 +38,24 @@ public interface Raster {
 
     /**
      * Sets all pixels of thi image to the provided color
-     * @param background
+     * @param background color of the background
      */
     void clear(int background);
+
+    /**
+     * Returns an integer pixel in the default RGB color model
+     * @param x first coordinate of the pixel
+     * @param y second coordinate of the pixel
+     * @return an integer pixel in the default RGB color model and default sRGB colorspace.
+     */
     int getPixel(int x, int y);
 
+    /**
+     * Sets a pixel in this BufferedImage to the specified RGB value
+     * @param x the X coordinate of the pixel to set
+     * @param y the Y coordinate of the pixel to set
+     * @param color numeric RGB value
+     */
     void setPixel(int x, int y, int color) ;
 }
 
