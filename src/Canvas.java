@@ -1,4 +1,5 @@
 import objectdata.Point;
+import objectdata.Polygon;
 import rasterdata.FilledLineRasterizer;
 import rasterdata.Presentable;
 import rasterdata.RasterBI;
@@ -32,20 +33,29 @@ public class Canvas {
 	private RasterBI img;
 	private Point p1;
 	private Point p2;
+	Polygon p;
 	private int background;
-	private List<Point> points = new ArrayList();
+	private boolean rasterizerStart;
+	private boolean holdingShift;
+	private boolean pressedP;
+	private boolean line;
+	String modeP;
+	private List<Point> points = new ArrayList(); //Array list for LinerTrivial class
+	private List<Point> pointsR = new ArrayList(); //Array list for Filled line rasterizer class and its methods
+	private int mode;
 	private FilledLineRasterizer rasterizer;
 	private int x, y;
 
 	public Canvas(int width, int height) {
 		frame = new JFrame();
-
 		frame.setLayout(new BorderLayout());
 		frame.setTitle("UHK FIM PGRF : " + this.getClass().getName());
 		frame.setResizable(true);
 		frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-
+		rasterizerStart = false;
 		img = new RasterBI(width, height);
+		rasterizer = new FilledLineRasterizer(img);
+		pointsR.add(new Point(0,0));
 		background = 0x2f2f2f;
 		panel = new JPanel() {
 			private static final long serialVersionUID = 1L;
@@ -56,28 +66,23 @@ public class Canvas {
 				img.present(g);
 			}
 		};
-
+		pressedP = false;
+		line = false;
 		panel.setPreferredSize(new Dimension(width, height));
-
 		frame.add(panel, BorderLayout.CENTER);
 		frame.pack();
 		frame.setVisible(true);
 		panel.requestFocusInWindow();
-		ln = new LinerTrivial();
-
+		ln = new LinerTrivial(img);
+		holdingShift = false;
 		panel.addComponentListener(new ComponentAdapter() {
 			@Override
 			public void componentResized(ComponentEvent e) {
-				if (panel.getWidth()<1 || panel.getHeight()<1)
-					return;
-				if (panel.getWidth()<=img.getWidth() && panel.getHeight()<=img.getHeight()) //no resize if new one is smaller
-					return;
-				RasterBI newRaster = new RasterBI(panel.getWidth(), panel.getHeight());
-
-				newRaster.draw(img);
-				img = newRaster;
+				RasterBI newImg = new RasterBI(panel.getWidth(), panel.getHeight());
+				img = newImg;
+				ln = new LinerTrivial(img);
 				rasterizer = new FilledLineRasterizer(img);
-				panel.repaint();
+				draw();
 			}
 		});
 
@@ -85,8 +90,45 @@ public class Canvas {
 			@Override
 			public void keyPressed(KeyEvent e) {
 				if (e.getKeyCode() == KeyEvent.VK_C) {
+					points.clear();
+					pointsR.clear();
+					pointsR.add(new Point(0,0));
+					ln = new LinerTrivial(img);
+					rasterizer = new FilledLineRasterizer(img);
+					rasterizerStart = false;
 					img.clear(background);
+					pressedP = false;
 					img.present(panel.getGraphics());
+					panel.repaint();
+				}
+				if (e.getKeyCode() == KeyEvent.VK_SHIFT){
+					holdingShift = true;
+				}
+				if (e.getKeyCode() == KeyEvent.VK_P){
+					draw();
+					if (!pressedP){
+						if (p == null) {
+							p = new Polygon(points, 0xff0000);
+						} else {
+							p.setEdges(points);
+						}
+						if (points.size() > 1 && p != null){
+							p.drawPolygon(img);
+
+						}
+						panel.repaint();
+						pressedP = true;
+					} else {
+						panel.repaint();
+						pressedP = false;
+					}
+				}
+			}
+
+			@Override
+			public void keyReleased(KeyEvent e) {
+				if (e.getKeyCode() == KeyEvent.VK_SHIFT){
+					holdingShift = false;
 				}
 			}
 		});
@@ -94,35 +136,27 @@ public class Canvas {
 		panel.addMouseListener(new MouseAdapter() {
 			@Override
 			public void mousePressed(MouseEvent e) {
-				//p1 = new Point(e.getX(), e.getY());
 				if (e.getButton() == 1) {
 					if (points.size() == 0) {
 						points.add(new Point(e.getX(),e.getY()));
-					} else {
-						points.clear();
-						points.add(new Point(e.getX(),e.getY()));
 					}
-				}
-                /*int size = 2;
-				int color  = 0xFFFFFF;
-				if (e.getButton() == MouseEvent.BUTTON1){
-					color = 0xff0000;
-				}
-				if (e.getButton() == MouseEvent.BUTTON2){
-					color = 0xff00;
-				}
-
-				for(int i=-size; i<=size; i++) {
-					for (int j = -size; j <= size; j++) {
-						img.setPixel(e.getX() + i, e.getY() + j, color);
+					line = true;
+				} else if (e.getButton() == 2){
+					mode = 2;
+					if (x != 0 && y != 0 && rasterizerStart == false) {
+						x = 0;
+						y = 0;
+						rasterizerStart = true;
 					}
-				}
-				if (e.getButton() == MouseEvent.BUTTON3) {
-					rasterizer.drawLine(x, y, e.getX(), e.getY());
+					rasterizer.rasterize(x, y, e.getX(), e.getY(), Color.WHITE);
+					pointsR.add(new Point(e.getX(), e.getY()));
 					x = e.getX();
 					y = e.getY();
+				} else if (e.getButton() == 3){
+					mode = 3;
+				} else {
+					mode = 0;
 				}
-				panel.repaint();*/
 			}
 		});
 		panel.addMouseListener(new MouseAdapter() {
@@ -130,44 +164,86 @@ public class Canvas {
 			public void mouseReleased(MouseEvent e) {
 				if (e.getButton() == 1){
 					points.add(new Point(e.getX(),e.getY()));
+					line = false;
+				}
+                else if (e.getButton() == 2){
+					mode = 2;
+				}
+				else if (e.getButton() == 3){
+					mode = 3;
+				} else {
+					mode = 0;
+				}
+
+				draw();
+				if (pressedP){
+					redrawPolygon();
 				}
 				panel.repaint();
-                /*p2 = new Point(e.getX(), e.getY());
-				ln.drawLine(img, p1, p2,0xffff00);
 
-				int size = 2;
-				int color  = 0xFFFFFF;
-				if (e.getButton() == MouseEvent.BUTTON1)
-					color = 0xff0000;
-				if (e.getButton() == MouseEvent.BUTTON2)
-					color = 0xff00;
-				if (e.getButton() == MouseEvent.BUTTON3)
-					color =0xff;
-				for(int i=-size; i<=size; i++)
-					for(int j=-size; j<=size; j++)img.setColor(e.getX()+i, e.getY()+j, color);
-
-				img.present(panel.getGraphics());*/
 			}
 		});
 
 		panel.addMouseMotionListener(new MouseMotionAdapter() {
 			@Override
 			public void mouseDragged(MouseEvent e) {
-				img.clear(background);
-				if (points.size() > 0){
-					int i = points.size();
-					//ln.drawLine(img, points.get(i - 1).getX(), points.get(i - 1).getY(), e.getX(), e.getY(), 0xffff00);
-					//ln.drawLine(img, points.get(0).getX(), points.get(0).getY(), e.getX(), e.getY(), 0xffff00);
-					ln.drawLine(img, points.get(0).getX(), points.get(0).getY(), e.getX(), e.getY(), 0xffff00);
-				}
+				draw();
+				if (line) {
+					redrawLine();
+					if (points.size() > 0) {
+						int i = points.size();
+						ln.drawLine(points.get(i - 1).getX(), points.get(i - 1).getY(), e.getX(), e.getY(), 0xffff00);
+						ln.drawLine(points.get(0).getX(), points.get(0).getY(), e.getX(), e.getY(), 0xffff00);
 
+					}
+				} else if (mode == 3 && points.size() > 0) {
+					int i = points.size();
+					ln.drawDashLine(points.get(i - 1).getX(), points.get(i - 1).getY(), e.getX(), e.getY(), 0xffff00);
+					ln.drawDashLine(points.get(0).getX(), points.get(0).getY(), e.getX(), e.getY(), 0xffff00);
+				}
+				panel.repaint();
+			}
+
+			@Override
+			public void mouseMoved(MouseEvent e) {
+                draw();
+				if (pressedP){
+					redrawPolygon();
+				}
 				panel.repaint();
 			}
 		});
 	}
 
+	public void redrawLine() {
+		if (points.size() > 1){
+			for (int i = 0; i < points.size(); ++i) {
+				ln.drawLine(points.get((i + 1) % points.size()).getX(), points.get((i + 1) % points.size()).getY(),points.get(i).getX(), points.get(i).getY(),0xffff00);
+			}
+		}
+		if (pointsR.size() > 1){
+			for (int i = 0; i < pointsR.size()-1; i++) {
+				rasterizer.drawLine(pointsR.get(i).getX(), pointsR.get(i).getY(), pointsR.get(i + 1).getX(), pointsR.get(i + 1).getY());
+			}
+		}
+	}
+	public void redrawPolygon(){
+		if (points.size() > 1 && p != null){
+			p.drawPolygon(img);
+		}
+	}
+
 	public void draw() {
 		img.clear(background);
+		redrawLine();
+		if (pressedP){
+			modeP = "On";
+		}
+		else {
+			modeP = "Off";
+		}
+		img.getGraphics().drawString("LMB - For drawing Polygons with Full Lines, Either click or dragg| RMB - Drawing with dashed lines - Holding the right mouse button to draw dashed lines and left click to accept",5,img.getHeight() - 20);
+		img.getGraphics().drawString("MMB - For drawing white lines starting from [0,0] with FilledLineRasterizer class, P[" + modeP + "] - Is a mode for duplicating a second polygon with red color, moved by 50points with the Polygon Class",5,img.getHeight() - 5);
 	}
 
 	public void start() {
@@ -178,7 +254,7 @@ public class Canvas {
 	}
 
 	public static void main(String[] args) {
-		SwingUtilities.invokeLater(() -> new Canvas(800, 600).start());
+		SwingUtilities.invokeLater(() -> new Canvas(1000, 600).start());
 	}
 
 }
