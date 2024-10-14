@@ -43,6 +43,12 @@ public class Canvas {
 	private int mode;
 	private FilledLineRasterizer rasterizer;
 	private int x, y;
+	private Polygon polygon;
+	private int selectedVertex = -1;
+	private final int clickThreshhold = 10;
+
+	private boolean thickLineMode = false;
+	private int lineThickness = 5;
 
 	public Canvas(int width, int height) {
 		frame = new JFrame();
@@ -55,6 +61,7 @@ public class Canvas {
 		rasterizer = new FilledLineRasterizer(img);
 		pointsR.add(new Point(0,0));
 		background = 0x2f2f2f;
+		polygon = new Polygon(new ArrayList<Point>(), 0);
 		panel = new JPanel() {
 			private static final long serialVersionUID = 1L;
 
@@ -62,6 +69,8 @@ public class Canvas {
 			public void paintComponent(Graphics g) {
 				super.paintComponent(g);
 				img.present(g);
+
+				//polygon.drawPolygon(ln, 0xffff00);
 			}
 		};
 		pressedP = false;
@@ -99,10 +108,10 @@ public class Canvas {
 					ln = new LinerTrivial(img);
 					rasterizer = new FilledLineRasterizer(img);
 					rasterizerStart = false;
-					img.clear(background);
 					pressedP = false;
 					img.present(panel.getGraphics());
 					panel.repaint();
+					draw();
 				}
 				if (e.getKeyCode() == KeyEvent.VK_SHIFT){
 					holdingShift = true;
@@ -116,7 +125,7 @@ public class Canvas {
 							p.setEdges(points);
 						}
 						if (points.size() > 1 && p != null){
-							p.drawPolygon(img);
+							p.drawPolygon(ln, 0xffff00);
 
 						}
 						panel.repaint();
@@ -125,6 +134,9 @@ public class Canvas {
 						panel.repaint();
 						pressedP = false;
 					}
+				}
+				if (e.getKeyCode() == KeyEvent.VK_T) {
+					thickLineMode = !thickLineMode;
 				}
 			}
 
@@ -141,6 +153,8 @@ public class Canvas {
 		panel.addMouseListener(new MouseAdapter() {
 			@Override
 			public void mousePressed(MouseEvent e) {
+
+
 				if (e.getButton() == 1 && !holdingShift) { //When clicking with LMB
 					if (points.size() == 0) {
 						points.add(new Point(e.getX(),e.getY()));
@@ -153,19 +167,19 @@ public class Canvas {
 						y = 0;
 						rasterizerStart = true;
 					}
-					rasterizer.rasterize(x, y, e.getX(), e.getY(), Color.WHITE);
+					rasterizer.drawLine(x, y, e.getX(), e.getY());
 					pointsR.add(new Point(e.getX(), e.getY()));
 					x = e.getX();
 					y = e.getY();
 				} else if (e.getButton() == 3 && !holdingShift){ //When clicking with RMB
 					mode = 3;
-				} else if (e.getButton() == 1 && holdingShift){ //Shift + LMB
-					if (points.size() > 4){
-						int i = points.size();
-						ln.drawLine(points.get(i - 3).getX(), points.get(i-3).getY(), points.get(i-1).getX(), points.get(i-1).getY(), 0x00ff00);
-						ln.drawLine(points.get(i - 4).getX(), points.get(i-4).getY(), points.get(i-1).getX(), points.get(i-1).getY(), 0x00ff00);
+
+					selectedVertex = polygon.findClosestVertex(e.getX(), e.getY(), clickThreshhold);
+					if (selectedVertex == -1) {
+						// If no vertex is found within the threshold, look for the nearest edge to add a new vertex
+						addVertexToClosestEdge(e.getX(), e.getY());
+
 					}
-					panel.repaint();
 				} else {
 					mode = 0;
 				}
@@ -185,6 +199,7 @@ public class Canvas {
 					mode = 2;
 				} else if (e.getButton() == 3 && !holdingShift){ //When releasing RMB
 					mode = 3;
+					selectedVertex = -1;
 				} else {
 					mode = 0;
 				}
@@ -207,19 +222,49 @@ public class Canvas {
 			public void mouseDragged(MouseEvent e) {
 				draw();
 				if (line) {
+
+					Point firstPoint = points.get(points.size() - 1);
+
+					double x2 = e.getX();
+					double y2 = e.getY();
+					double x1 = firstPoint.getX();
+					double y1 = firstPoint.getY();
+
 					redrawLine();
 					if (points.size() > 0) {
 						int i = points.size();
-						ln.drawLine(points.get(i - 1).getX(), points.get(i - 1).getY(), e.getX(), e.getY(), 0xffff00);
-						ln.drawLine(points.get(0).getX(), points.get(0).getY(), e.getX(), e.getY(), 0xffff00);
+						if (holdingShift) {
+								double deltaX = x2 - x1;
+								double deltaY = y2 - y1;
 
-					}
-				} else if (mode == 3 && points.size() > 0) { //When holding the RMB it draws a dashed line
-					int i = points.size();
-					ln.drawDashLine(points.get(i - 1).getX(), points.get(i - 1).getY(), e.getX(), e.getY(), 0xffff00);
-					ln.drawDashLine(points.get(0).getX(), points.get(0).getY(), e.getX(), e.getY(), 0xffff00);
+							if (Math.abs(deltaX) > Math.abs(deltaY)) {
+								// Snap to horizontal
+								y2 = y1;  // Keep y constant for horizontal line
+							} else if (Math.abs(deltaY) > Math.abs(deltaX)) {
+								// Snap to vertical
+								x2 = x1;  // Keep x constant for vertical line
+							} else {
+								// Snap to 45-degree diagonal (diagonal line)
+								if (Math.abs(deltaX) > Math.abs(deltaY)) {
+									y2 = y1 + deltaX;  // Ensure 45-degree slope
+								} else {
+									x2 = x1 + deltaY;
+								}
+							}
+						}
+						if (thickLineMode) {
+							ln.drawThickLine(x1, y1, x2, y2, lineThickness, 0xffff00);
+						} else {
+							ln.drawLine(x1, y1, x2, y2, 0xffff00);
+						}
+					} else if (mode == 3) { //When holding the RMB
+
+						polygon.updateVertex(selectedVertex, e.getX(), e.getY());
 				}
+
+
 				panel.repaint();
+				}
 			}
 
 			/**
@@ -243,12 +288,13 @@ public class Canvas {
 	public void redrawLine() {
 		if (points.size() > 1){
 			for (int i = 0; i < points.size(); ++i) {
-				ln.drawLine(points.get((i + 1) % points.size()).getX(), points.get((i + 1) % points.size()).getY(),points.get(i).getX(), points.get(i).getY(),0xffff00);
+				//ln.drawLine(points.get((i + 1) % points.size()).getX(), points.get((i + 1) % points.size()).getY(),points.get(i).getX(), points.get(i).getY(),0xffff00);
+				ln.drawThickLine(points.get((i + 1) % points.size()).getX(), points.get((i + 1) % points.size()).getY(),points.get(i).getX(), points.get(i).getY(),lineThickness, 0xffff00);
 			}
 		}
 		if (pointsR.size() > 1){
 			for (int i = 0; i < pointsR.size()-1; i++) {
-				rasterizer.drawLine(pointsR.get(i).getX(), pointsR.get(i).getY(), pointsR.get(i + 1).getX(), pointsR.get(i + 1).getY());
+				rasterizer.drawLine((int)pointsR.get(i).getX(), (int)pointsR.get(i).getY(), (int)pointsR.get(i + 1).getX(), (int)pointsR.get(i + 1).getY());
 			}
 		}
 	}
@@ -258,21 +304,94 @@ public class Canvas {
 	 */
 	public void redrawPolygon(){
 		if (points.size() > 1 && p != null){
-			p.drawPolygon(img);
+			p.drawPolygon(ln, 0xffff00);
 		}
 	}
+
+	private void addVertexToClosestEdge(int x, int y) {
+		double minDistance = Double.MAX_VALUE;
+		int insertIndex = -1;
+		Point newVertex = new Point(x, y);
+
+		// Loop through edges to find the closest edge
+		for (int i = 0; i < points.size(); i++) {
+			Point p1 = points.get(i);
+			Point p2 = points.get((i + 1) % points.size()); // Wrap around to the first point
+
+			// Calculate distance from point (x, y) to the current edge
+			double distance = distanceToSegment(p1, p2, newVertex);
+			if (distance < minDistance) {
+				minDistance = distance;
+				insertIndex = i;
+			}
+		}
+
+		// Insert the new vertex at the closest edge
+		if (insertIndex != -1) {
+			points.add(insertIndex + 1, newVertex);
+		}
+	}
+
+	// Utility method to calculate the distance from a point to a segment
+	private double distanceToSegment(Point p1, Point p2, Point p) {
+		double xDelta = p2.getX() - p1.getX();
+		double yDelta = p2.getY() - p1.getY();
+
+		if ((xDelta == 0) && (yDelta == 0)) {
+			return p.distance(p1);
+		}
+
+		double u = ((p.getX() - p1.getX()) * xDelta + (p.getY() - p1.getY()) * yDelta) / (xDelta * xDelta + yDelta * yDelta);
+		u = Math.max(0, Math.min(1, u));
+
+		double closestX = p1.getX() + u * xDelta;
+		double closestY = p1.getY() + u * yDelta;
+
+		return p.distance(new Point(closestX, closestY));
+	}
+
 
 	public void draw() {
 		img.clear(background);
 		redrawLine();
-		if (pressedP){
-			modeP = "On";
-		} else {
-			modeP = "Off";
-		}
-		img.getGraphics().drawString("LMB - For drawing Polygons with Full Lines, Either click or dragg | RMB - Drawing with dashed lines - Holding the right mouse button to draw dashed lines and left click to accept | C - clear the canvas",5,img.getHeight() - 35);
-		img.getGraphics().drawString("MMB - For drawing white lines starting from [0,0] with FilledLineRasterizer class, P[" + modeP + "] - Is a mode for duplicating a second polygon with red color, moved by 50points with the Polygon Class",5,img.getHeight() - 20);
-		img.getGraphics().drawString("SHIFT + LMB - Not exactly working but if you hold shift and left click at the same time it will show you some lines from point to another - they are supposed to represent diagonals(Only if you have more than 5 edges)",5,img.getHeight() - 5);
+
+		int startY = img.getHeight()/3;
+		int lineHeight = 15;
+
+		img.getGraphics().drawString("=== Controls ===", 5, startY);
+		startY += lineHeight;
+
+		img.getGraphics().drawString("LMB (Left Mouse Button):", 5, startY);
+		startY += lineHeight;
+		img.getGraphics().drawString("- Draw lines and turn them into a polygon.", 20, startY);
+		startY += lineHeight;
+		img.getGraphics().drawString("- Click or drag to see the line follow your cursor.", 20, startY);
+		startY += lineHeight + 5;
+
+		img.getGraphics().drawString("MMB (Middle Mouse Button):", 5, startY);
+		startY += lineHeight;
+		img.getGraphics().drawString("- Draw lines using Bresenham's algorithm.", 20, startY);
+		startY += lineHeight;
+		img.getGraphics().drawString("- Starts from position (0, 0) (top-left corner).", 20, startY);
+		startY += lineHeight + 5;
+
+		img.getGraphics().drawString("RMB (Right Mouse Button):", 5, startY);
+		startY += lineHeight;
+		img.getGraphics().drawString("- Find and add a point to the closest vertex of the polygon.", 20, startY);
+		startY += lineHeight;
+		img.getGraphics().drawString("- Click where you want to add the point.", 20, startY);
+		startY += lineHeight + 5;
+
+		img.getGraphics().drawString("C Key:", 5, startY);
+		startY += lineHeight;
+		img.getGraphics().drawString("- Clear the entire canvas.", 20, startY);
+		startY += lineHeight + 5;
+
+		img.getGraphics().drawString("SHIFT + LMB:", 5, startY);
+		startY += lineHeight;
+		img.getGraphics().drawString("- Draw horizontal or vertical lines.", 20, startY);
+		startY += lineHeight;
+		img.getGraphics().drawString("- Drag to start a line, hold SHIFT to snap to horizontal or vertical.", 20, startY);
 	}
 
 	public void start() {
@@ -283,7 +402,7 @@ public class Canvas {
 	}
 
 	public static void main(String[] args) {
-		SwingUtilities.invokeLater(() -> new Canvas(1200, 600).start());
+		SwingUtilities.invokeLater(() -> new Canvas(1400, 800).start());
 	}
 
 }

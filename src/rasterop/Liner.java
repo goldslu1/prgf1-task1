@@ -41,6 +41,8 @@ public interface Liner {
         drawLine(p1.getX(), p1.getY(), p2.getX(), p2.getY(), color);
     }
 
+    void drawThickLine(double x1, double y1, double x2, double y2, int thickness, int color);
+
     /**
      * Draws a straight line represented by a line
      * @param line represents an instance of Line, and a line to be drawn

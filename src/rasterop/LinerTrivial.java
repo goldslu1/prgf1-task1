@@ -23,6 +23,12 @@ public class LinerTrivial implements Liner{
         this.img = img;
         this.color = color;
     }
+
+    public void plot(double x, double y, int color) {
+        // Assuming you have a method in your image buffer to set pixel color
+        img.setPixel((int) Math.round(x), (int) Math.round(y), color);
+    }
+
     @Override
     public void drawLine(double x1, double y1, double x2, double y2, int color) {
         double temp;
@@ -143,5 +149,63 @@ public class LinerTrivial implements Liner{
             }
         }
 
+    }
+
+    @Override
+    public void drawThickLine(double x1, double y1, double x2, double y2, int thickness, int color) {
+        double dx = x2 - x1;
+        double dy = y2 - y1;
+
+        // Length of the line
+        double length = Math.sqrt(dx * dx + dy * dy);
+
+        // Calculate the unit vector perpendicular to the line
+        double perpX = -dy / length;
+        double perpY = dx / length;
+
+        // Draw multiple parallel lines around the original line to simulate thickness
+        for (int i = -thickness / 2; i <= thickness / 2; i++) {
+            // Offset the original line by "i" in both perpendicular directions
+            int offsetX = (int) (i * perpX);
+            int offsetY = (int) (i * perpY);
+
+            // Draw the offset line
+            drawLine(x1 + offsetX, y1 + offsetY, x2 + offsetX, y2 + offsetY, color);
+        }
+
+        // Round the ends by drawing circles at the start and end points
+        drawCircle(x1, y1, thickness / 2, color); // Start cap
+        drawCircle(x2, y2, thickness / 2, color); // End cap
+    }
+
+    public void drawCircle(double cx, double cy, double radius, int color) {
+        // Implement a simple filled circle drawing algorithm, e.g., Bresenham's circle
+        int r = (int) radius;
+        int x = r, y = 0;
+        int decisionOver2 = 1 - x;   // Decision criterion divided by 2 evaluated at x=r, y=0
+
+        while (y <= x) {
+            // Draw horizontal lines to fill the circle
+            drawHorizontalLine(cx - x, cy + y, 2 * x, color);
+            drawHorizontalLine(cx - x, cy - y, 2 * x, color);
+            drawHorizontalLine(cx - y, cy + x, 2 * y, color);
+            drawHorizontalLine(cx - y, cy - x, 2 * y, color);
+
+            y++;
+            if (decisionOver2 <= 0) {
+                decisionOver2 += 2 * y + 1;   // Change decision criterion for y -> y+1
+            } else {
+                x--;
+                decisionOver2 += 2 * (y - x) + 1;   // Change for y -> y+1, x -> x-1
+            }
+        }
+    }
+
+    // Method to draw a horizontal line, helper for drawing the circle
+    public void drawHorizontalLine(double x, double y, int length, int color) {
+        for (int i = 0; i < length; i++) {
+            // Plot each pixel (assuming you have a method to plot points)
+            plot(x + i, y, color);
+        }
     }
 }
